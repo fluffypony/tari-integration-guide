@@ -34,7 +34,29 @@
             --grpcurl-border: #28a745;
         }
         
-        /* Dark mode */
+        
+        /* Network badge base styles */
+        .network-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-right: 5px;
+        }
+        
+        .mainnet { 
+            background: #4caf50; 
+            color: white; 
+        }
+        
+        .testnet { 
+            background: #ff9800; 
+            color: black; 
+        }
+        
+        .nextnet { 
+            background: #29b6f6; 
+            color: white; 
+        }        /* Dark mode */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg-primary: #1a1a1a;
@@ -369,7 +391,10 @@
         
         <div class="info">
             <strong>📋 What You'll Learn:</strong> This comprehensive guide covers everything needed to integrate Minotari (XTM) into your cryptocurrency exchange, from node setup to transaction monitoring and fund management. Every example includes pseudocode for security understanding and grpcurl commands for testing.
-        </div>
+
+        <div class="warning">
+            <strong>⚠️ Security Warning:</strong> This guide contains placeholder credentials and URLs marked as "PLACEHOLDER" or "secure_password_here". Replace ALL placeholders with actual values and use secure credential management (environment variables, secrets managers) in production. Never use hardcoded credentials.
+        </div>        </div>
 
         <div class="toc">
             <h3>📖 Table of Contents</h3>
@@ -456,7 +481,7 @@ sudo apt-get install -y nodejs
 npm install @grpc/grpc-js @grpc/proto-loader
 
 # Install additional utilities
-npm install grpcurl-web axios lodash</code></pre>
+npm install axios lodash</code></pre>
             </div>
             
             <div id="python-setup" class="tab-content">
@@ -526,7 +551,8 @@ grpcurl -plaintext localhost:18143 list</code></pre>
             
             <div id="install-linux" class="tab-content active">
                 <pre><code># Download latest release
-curl -L https://tari.com/downloads/linux/minotari-latest.tar.gz -o minotari.tar.gz
+curl -L # PLACEHOLDER: Replace with actual Tari Linux download URL
+curl -L https://github.com/tari-project/tari/releases/latest/download/minotari-linux.tar.gz -o minotari.tar.gz
 
 # Extract
 tar -xzf minotari.tar.gz
@@ -540,7 +566,8 @@ minotari_node --version</code></pre>
             
             <div id="install-macos" class="tab-content">
                 <pre><code># Download latest release
-curl -L https://tari.com/downloads/macos/minotari-latest.dmg -o minotari.dmg
+curl -L # PLACEHOLDER: Replace with actual Tari macOS download URL
+curl -L https://github.com/tari-project/tari/releases/latest/download/minotari-macos.dmg -o minotari.dmg
 
 # Mount and install
 hdiutil attach minotari.dmg
@@ -555,7 +582,8 @@ minotari_node --version</code></pre>
 # Run the installer executable
 # Or use PowerShell:
 
-Invoke-WebRequest -Uri "https://tari.com/downloads/windows/minotari-latest.exe" -OutFile "minotari-installer.exe"
+Invoke-WebRequest -Uri "# PLACEHOLDER: Replace with actual Tari Windows download URL
+Invoke-WebRequest -Uri "https://github.com/tari-project/tari/releases/latest/download/minotari-windows.exe"" -OutFile "minotari-installer.exe"
 .\minotari-installer.exe
 
 # Verify installation
@@ -653,6 +681,8 @@ grpcurl -plaintext localhost:18142 tari.rpc.BaseNode/GetNetworkStatus
 # List connected peers
 grpcurl -plaintext localhost:18142 tari.rpc.BaseNode/ListConnectedPeers
 
+# Note: The following scripts require 'jq' for JSON parsing
+# Install with: brew install jq (macOS) or apt-get install jq (Ubuntu)
 # Quick health check script
 #!/bin/bash
 echo "=== Node Health Check ==="
@@ -692,13 +722,13 @@ mkdir -p ~/.tari/mainnet/config
 cat > ~/.tari/mainnet/config/config.toml << 'EOF'
 [base_node.mainnet]
 grpc_enabled = true
-grpc_base_node_address = "http://127.0.0.1:18142"
+grpc_base_node_address = "127.0.0.1:18142"
 transport = "tor"
 allow_test_addresses = false
 
 [wallet]
 grpc_enabled = true
-grpc_address = "http://127.0.0.1:18143"
+grpc_address = "127.0.0.1:18143"
 EOF
 
 # Start node
@@ -1846,7 +1876,7 @@ class TariDepositMonitor:
         
         try:
             # Extract payment ID
-            payment_id = transaction.payment_id.decode('utf-8', errors='ignore')
+            payment_id = transaction.payment_id.decode('utf-8', errors='replace')
             
             if not payment_id:
                 print(f"Transaction {transaction.tx_id} has no payment ID")
@@ -1968,7 +1998,7 @@ impl TariDepositMonitor {
         tx: mpsc::Sender<TransactionInfo>
     ) {
         loop {
-            match client.stream_transaction_events(Request::new(())).await {
+            match client.stream_transaction_events(Request::new(tari_rpc::TransactionEventRequest {})).await {
                 Ok(mut stream) => {
                     while let Some(response) = stream.get_mut().message().await.ok().flatten() {
                         if let Some(transaction_event) = response.transaction {
@@ -1997,7 +2027,7 @@ impl TariDepositMonitor {
         loop {
             interval.tick().await;
             
-            match client.get_completed_transactions(Request::new(())).await {
+            match client.get_completed_transactions(Request::new(tari_rpc::GetCompletedTransactionsRequest {})).await {
                 Ok(mut stream) => {
                     while let Some(response) = stream.get_mut().message().await.ok().flatten() {
                         if let Some(transaction) = response.transaction {
@@ -2574,7 +2604,7 @@ fi</code></pre>
             if (decoded.length < 2) return false;
             
             // Check the second byte (address type)
-            // 0x01 = interactive, 0x00 = one-sided
+            // IMPORTANT: This logic must match official Tari address specification            // 0x01 = interactive, 0x00 = one-sided
             return (decoded[1] & 0x01) === 0x01;
         } catch {
             return false;
@@ -2728,7 +2758,7 @@ class TariWithdrawalManager:
                 return False
             
             # Check the second byte (address type)
-            # 0x01 = interactive, 0x00 = one-sided
+            // IMPORTANT: This logic must match official Tari address specification            # 0x01 = interactive, 0x00 = one-sided
             return (decoded[1] & 0x01) == 0x01
         except:
             return False
@@ -2918,7 +2948,7 @@ impl TariWithdrawalManager {
         }
         
         // Check the second byte (address type)
-        // 0x01 = interactive, 0x00 = one-sided
+            // IMPORTANT: This logic must match official Tari address specification        // 0x01 = interactive, 0x00 = one-sided
         Ok((decoded[1] & 0x01) == 0x01)
     }
     
@@ -3136,7 +3166,7 @@ class TariWithdrawalManager {
             }
             
             // Check the second byte (address type)
-            // 0x01 = interactive, 0x00 = one-sided
+            // IMPORTANT: This logic must match official Tari address specification            // 0x01 = interactive, 0x00 = one-sided
             return (ord($decoded[1]) & 0x01) === 0x01;
         } catch (Exception $e) {
             return false;
@@ -3179,7 +3209,7 @@ class TariWithdrawalManager {
     private function base58Decode(string $input): string {
         // Implementation of base58 decode
         // You might want to use a library like BitWasp\Bitcoin\Base58
-        return $input; // Placeholder
+        return $input; // Placeholder - implement proper Base58 decoding (e.g., BitWasp\Bitcoin\Base58)
     }
     
     // Database helper methods (implement based on your database)
@@ -4059,6 +4089,25 @@ impl TariWithdrawalProcessor {
             request.metadata_mut().insert(key.clone(), value.clone());
         }
         
+        // Add authentication metadata
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        
+        // Add authentication metadata
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        // Add authentication metadata
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+
+        // Add authentication metadata
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+
         let response = self.wallet_client.transfer(request).await?;
         let response = response.into_inner();
         
@@ -4120,6 +4169,21 @@ impl TariWithdrawalProcessor {
             request.metadata_mut().insert(key.clone(), value.clone());
         }
         
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+
         let _response = self.wallet_client.get_state(request).await?;
         Ok(())
     }
@@ -4130,6 +4194,21 @@ impl TariWithdrawalProcessor {
             request.metadata_mut().insert(key.clone(), value.clone());
         }
         
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+
         let response = self.wallet_client.get_balance(request).await?;
         Ok(response.into_inner())
     }
@@ -4143,6 +4222,19 @@ impl TariWithdrawalProcessor {
             request.metadata_mut().insert(key.clone(), value.clone());
         }
         
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
+        for (key, value) in &self.metadata {
+            request.metadata_mut().insert(key.clone(), value.clone());
+        }
         let response = self.wallet_client.get_transaction_info(request).await?;
         let response = response.into_inner();
         
@@ -4763,7 +4855,8 @@ esac</code></pre>
 
 services:
   tari-node:
-    image: tariproject/minotari_node:latest
+    # WARNING: Use specific version tags in production, not 'latest'
+        image: tariproject/minotari_node:latest
     container_name: tari-node
     restart: unless-stopped
     ports:
@@ -4945,6 +5038,7 @@ spec:
     spec:
       containers:
       - name: tari-node
+        # WARNING: Use specific version tags in production, not 'latest'
         image: tariproject/minotari_node:latest
         ports:
         - containerPort: 18141
